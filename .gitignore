@@ -1,0 +1,253 @@
+# ====================
+# Go
+# ====================
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+coverage.out
+*.cover
+*.coverprofile
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Go build cache
+.cache/
+
+# Air - Live reload for Go apps
+tmp/
+.air.toml
+
+# ====================
+# Build & Artifacts
+# ====================
+
+# Build output
+/bin/
+/dist/
+/build/
+*.o
+*.a
+*.prof
+
+# Debug
+__debug_bin*
+debug
+
+# ====================
+# Environment & Config
+# ====================
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Local config overrides
+config.local.yaml
+config.local.yml
+config.local.json
+
+# ====================
+# IDE & Editors
+# ====================
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+*.code-workspace
+
+# JetBrains IDEs (GoLand, IntelliJ IDEA)
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+.netrwhist
+
+# Emacs
+\#*\#
+.\#*
+*~
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ====================
+# OS
+# ====================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ====================
+# Logs
+# ====================
+
+*.log
+logs/
+log/
+*.log.*
+
+# ====================
+# Database
+# ====================
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# PostgreSQL
+*.sql.bak
+*.dump
+
+# Database backups
+*.backup
+*.bak
+
+# ====================
+# Testing & Coverage
+# ====================
+
+# Test results
+test-results/
+*.test
+*.out
+
+# Coverage reports
+coverage/
+.coverage
+htmlcov/
+
+# Benchmarks
+*.bench
+
+# ====================
+# Dependencies
+# ====================
+
+# Vendor (if using)
+vendor/
+
+# Node modules (if using frontend tools)
+node_modules/
+
+# ====================
+# Documentation
+# ====================
+
+# Generated docs
+docs/generated/
+site/
+
+# ====================
+# Temporary Files
+# ====================
+
+*.tmp
+*.temp
+*.swp
+*.bak
+*.cache
+.tmp/
+.temp/
+
+# ====================
+# Security & Secrets
+# ====================
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Credentials
+credentials.json
+secrets.yaml
+secrets.yml
+
+# Certificates
+*.crt
+*.cer
+
+# ====================
+# Project Specific
+# ====================
+
+# ChronoTask API specific
+/chronotask-api
+
+# Migration rollback files
+*.rollback.sql
+
+# Local development
+docker-compose.override.yml
+
+# ====================
+# Cloud & Deployment
+# ====================
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Docker
+.dockerignore
+
+# Kubernetes
+*.kubeconfig

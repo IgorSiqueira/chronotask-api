@@ -358,6 +358,247 @@ func NewDelivery(app *Application) *Delivery {
 ✅ **Explícito** - Código claro e auditável
 ✅ **Clean Architecture compliant** - Separação por camadas
 
+### 🔐 JWT Authentication System
+
+#### Overview
+The project implements JWT (JSON Web Token) authentication following Clean Architecture principles with:
+- Access tokens (short-lived, 15m default)
+- Refresh tokens (long-lived, 7 days default)
+- Authentication middleware for protected routes
+- Stateless authentication
+
+#### Architecture Components
+
+**1. JWT Service Interface (Port)** - `internal/application/port/jwt_service.go`
+```go
+type JWTService interface {
+    GenerateAccessToken(userID, email string) (string, error)
+    GenerateRefreshToken(userID, email string) (string, error)
+    ValidateToken(token string) (*TokenClaims, error)
+    RefreshAccessToken(refreshToken string) (string, error)
+}
+```
+
+**2. JWT Service Implementation** - `internal/infrastructure/service/jwt_service.go`
+- Uses `github.com/golang-jwt/jwt/v5`
+- HMAC-SHA256 signing algorithm
+- Configurable token durations
+- Custom claims with userID and email
+
+**3. Login Use Case** - `internal/application/usecase/login_user_usecase.go`
+```go
+type LoginUserUseCase struct {
+    userRepo      repository.UserRepository
+    hasherService port.HasherService
+    jwtService    port.JWTService
+}
+
+// Execute validates credentials and returns JWT tokens
+func (uc *LoginUserUseCase) Execute(ctx context.Context, input LoginUserInput) (*LoginUserOutput, error)
+```
+
+**4. Authentication Middleware** - `internal/delivery/http/middleware/auth_middleware.go`
+```go
+type AuthMiddleware struct {
+    jwtService port.JWTService
+}
+
+// RequireAuth validates JWT token from Authorization header
+// Stores user_id and user_email in Gin context
+func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc
+```
+
+#### Configuration
+
+Add to `.env`:
+```env
+# JWT Configuration
+JWT_SECRET=your-super-secret-key-min-32-chars
+JWT_ACCESS_TOKEN_DURATION=15m      # 15 minutes
+JWT_REFRESH_TOKEN_DURATION=168h    # 7 days (use hours, not days)
+```
+
+**Important**: Go's `time.ParseDuration` doesn't support "d" for days. Use "h" for hours (e.g., 168h = 7 days).
+
+#### API Endpoints
+
+**1. Login (Public Route)**
+```http
+POST /api/v1/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "userId": "uuid",
+  "email": "user@example.com",
+  "fullName": "User Name",
+  "accessToken": "eyJhbGc...",
+  "refreshToken": "eyJhbGc..."
+}
+```
+
+**Response (401 Unauthorized)**:
+```json
+{
+  "error": "authentication_failed",
+  "message": "invalid email or password"
+}
+```
+
+**2. Protected Routes**
+Add `Authorization: Bearer <access_token>` header:
+```http
+GET /api/v1/user/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Middleware Responses**:
+- **401 Unauthorized** - Missing/invalid/expired token
+- **200 OK** - Valid token, user_id and user_email stored in context
+
+#### Implementation Guide
+
+**Step 1**: Add JWT configuration to containers
+
+`cmd/api/container/infrastructure.go`:
+```go
+type Infrastructure struct {
+    JWTService port.JWTService  // Add this
+    // ...
+}
+
+func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
+    jwtService, err := service.NewJWTService(
+        cfg.JWT.Secret,
+        cfg.JWT.AccessTokenDuration,
+        cfg.JWT.RefreshTokenDuration,
+    )
+    // ...
+}
+```
+
+**Step 2**: Add LoginUserUseCase
+
+`cmd/api/container/application.go`:
+```go
+type Application struct {
+    LoginUserUseCase *usecase.LoginUserUseCase  // Add this
+    // ...
+}
+
+func NewApplication(infra *Infrastructure) *Application {
+    return &Application{
+        LoginUserUseCase: usecase.NewLoginUserUseCase(
+            infra.UserRepository,
+            infra.HasherService,
+            infra.JWTService,
+        ),
+    }
+}
+```
+
+**Step 3**: Add AuthMiddleware and update UserHandler
+
+`cmd/api/container/delivery.go`:
+```go
+func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
+    // Initialize middleware
+    authMiddleware := middleware.NewAuthMiddleware(infra.JWTService)
+
+    // Update user handler with LoginUseCase
+    userHandler := deliveryHttp.NewUserHandler(
+        app.CreateUserUseCase,
+        app.LoginUserUseCase,  // Add this
+    )
+
+    // Pass middleware to router
+    router := deliveryHttp.NewRouter(
+        healthHandler,
+        userHandler,
+        authMiddleware,  // Add this
+    )
+    // ...
+}
+```
+
+**Step 4**: Configure routes with middleware
+
+`internal/delivery/http/router.go`:
+```go
+func (r *Router) SetupRoutes() *gin.Engine {
+    router := gin.Default()
+
+    v1 := router.Group("/api/v1")
+    {
+        // Public routes
+        v1.POST("/user", r.userHandler.Create)
+        v1.POST("/login", r.userHandler.Login)
+
+        // Protected routes
+        authenticated := v1.Group("")
+        authenticated.Use(r.authMiddleware.RequireAuth())
+        {
+            authenticated.GET("/user/profile", r.userHandler.GetProfile)
+            authenticated.POST("/habit", r.habitHandler.Create)
+        }
+    }
+
+    return router
+}
+```
+
+#### Security Best Practices
+
+1. **Secret Key**: Use strong random strings (min 32 chars)
+2. **Token Duration**: Short-lived access tokens (15m), longer refresh tokens (7 days)
+3. **HTTPS Only**: Always use HTTPS in production
+4. **Token Storage**: Store tokens securely on client (HttpOnly cookies recommended)
+5. **Error Messages**: Don't reveal user existence in login errors
+6. **Password Validation**: Already handled by HasherService with bcrypt
+
+#### Testing Authentication
+
+**Test 1: Login with valid credentials**
+```bash
+curl -X POST http://localhost:8080/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+```
+
+**Test 2: Access protected route without token**
+```bash
+curl -X GET http://localhost:8080/api/v1/user/profile
+# Expected: 401 Unauthorized
+```
+
+**Test 3: Access protected route with token**
+```bash
+curl -X GET http://localhost:8080/api/v1/user/profile \
+  -H "Authorization: Bearer <access_token>"
+# Expected: 200 OK with user data
+```
+
+#### Helper Functions
+
+Extract user info from protected routes:
+```go
+import "github.com/igor/chronotask-api/internal/delivery/http/middleware"
+
+func (h *Handler) ProtectedEndpoint(c *gin.Context) {
+    userID, _ := middleware.GetUserID(c)
+    email, _ := middleware.GetUserEmail(c)
+
+    // Use userID and email
+}
+```
+
 ### 🗄️ Database Infrastructure (PostgreSQL)
 
 #### Database Setup

@@ -19,6 +19,7 @@ type Infrastructure struct {
 
 	// External Services
 	HasherService port.HasherService
+	JWTService    port.JWTService
 
 	// Repositories
 	// Adicione novos repositórios aqui conforme necessário
@@ -41,6 +42,15 @@ func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
 	// Inicializar serviços externos
 	hasherService := service.NewBcryptHasher(bcrypt.DefaultCost)
 
+	jwtService, err := service.NewJWTService(
+		cfg.JWT.Secret,
+		cfg.JWT.AccessTokenDuration,
+		cfg.JWT.RefreshTokenDuration,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize JWT service: %w", err)
+	}
+
 	// Inicializar repositórios
 	userRepo := persistence.NewPostgresUserRepository(db)
 
@@ -51,6 +61,7 @@ func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
 	infra := &Infrastructure{
 		DB:             db,
 		HasherService:  hasherService,
+		JWTService:     jwtService,
 		UserRepository: userRepo,
 		// HabitRepository: habitRepo,
 		// CharacterRepository: characterRepo,

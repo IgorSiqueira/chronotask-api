@@ -20,6 +20,21 @@ type CreateUserResponse struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// LoginRequest represents the request to authenticate a user
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+// LoginResponse represents the response after successful authentication
+type LoginResponse struct {
+	UserID       string `json:"userId"`
+	Email        string `json:"email"`
+	FullName     string `json:"fullName"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error   string `json:"error"`

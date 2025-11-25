@@ -9,6 +9,7 @@ import (
 type Application struct {
 	// User Use Cases
 	CreateUserUseCase *usecase.CreateUserUseCase
+	LoginUserUseCase  *usecase.LoginUserUseCase
 	// UpdateUserUseCase *usecase.UpdateUserUseCase   // Exemplo futuro
 	// DeleteUserUseCase *usecase.DeleteUserUseCase   // Exemplo futuro
 	// GetUserUseCase    *usecase.GetUserUseCase      // Exemplo futuro
@@ -34,6 +35,11 @@ func NewApplication(infra *Infrastructure) *Application {
 		CreateUserUseCase: usecase.NewCreateUserUseCase(
 			infra.UserRepository,
 			infra.HasherService,
+		),
+		LoginUserUseCase: usecase.NewLoginUserUseCase(
+			infra.UserRepository,
+			infra.HasherService,
+			infra.JWTService,
 		),
 
 		// Futuro: adicionar novos use cases aqui

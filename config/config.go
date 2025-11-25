@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
+	JWT      JWTConfig
 }
 
 // ServerConfig holds server-specific configuration
@@ -26,6 +27,13 @@ type DatabaseConfig struct {
 	Password string
 	DBName   string
 	SSLMode  string
+}
+
+// JWTConfig holds JWT authentication configuration
+type JWTConfig struct {
+	Secret                string
+	AccessTokenDuration   string // e.g., "15m", "1h"
+	RefreshTokenDuration  string // e.g., "7d", "30d"
 }
 
 // Load loads configuration from environment variables
@@ -44,6 +52,11 @@ func Load() (*Config, error) {
 			Password: getEnv("DB_PASSWORD", ""),
 			DBName:   getEnv("DB_NAME", "chronotask"),
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+		},
+		JWT: JWTConfig{
+			Secret:               getEnv("JWT_SECRET", "your-super-secret-key-change-this-in-production"),
+			AccessTokenDuration:  getEnv("JWT_ACCESS_TOKEN_DURATION", "15m"),
+			RefreshTokenDuration: getEnv("JWT_REFRESH_TOKEN_DURATION", "168h"), // 7 days
 		},
 	}
 

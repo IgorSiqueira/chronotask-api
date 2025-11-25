@@ -1,64 +1,42 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/igor/chronotask-api/cmd/api/container"
 	"github.com/igor/chronotask-api/config"
-	"github.com/igor/chronotask-api/internal/application/usecase"
-	deliveryHttp "github.com/igor/chronotask-api/internal/delivery/http"
-	"github.com/igor/chronotask-api/internal/infrastructure/persistence"
-	"github.com/igor/chronotask-api/internal/infrastructure/service"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
-	// Load configuration
+	// Carregar configuração
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Dependency Injection - Manual wiring following Clean Architecture
-	// 1. Initialize infrastructure layer (database, external services)
-	db, err := persistence.NewPostgresDB(&cfg.Database)
+	// Inicializar container com todas as dependências
+	// O container automaticamente:
+	// 1. Conecta ao banco de dados
+	// 2. Inicializa todos os repositórios
+	// 3. Inicializa todos os use cases
+	// 4. Inicializa todos os handlers
+	// 5. Configura o router
+	appContainer, err := container.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Failed to initialize application: %v", err)
 	}
-	defer db.Close()
+	defer appContainer.Close()
 
-	// Verify database health
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := db.Health(ctx); err != nil {
-		log.Fatalf("Database health check failed: %v", err)
-	}
+	// Obter Gin Engine configurado
+	engine := appContainer.GetEngine()
 
-	// Initialize infrastructure services
-	hasherService := service.NewBcryptHasher(bcrypt.DefaultCost)
-
-	// Initialize repositories
-	userRepo := persistence.NewPostgresUserRepository(db)
-
-	// 2. Initialize application layer (use cases)
-	createUserUseCase := usecase.NewCreateUserUseCase(userRepo, hasherService)
-
-	// 3. Initialize delivery layer (HTTP handlers)
-	healthHandler := deliveryHttp.NewHealthHandler()
-	userHandler := deliveryHttp.NewUserHandler(createUserUseCase)
-
-	// Initialize router with handlers
-	router := deliveryHttp.NewRouter(healthHandler, userHandler)
-
-	// Setup routes
-	engine := router.SetupRoutes()
-
-	// Start server
-	log.Printf("Starting ChronoTask API server on port %s", cfg.Server.Port)
+	// Iniciar servidor
+	log.Printf("✓ Database connected")
+	log.Printf("✓ All dependencies injected")
+	log.Printf("✓ Starting ChronoTask API server on port %s", cfg.Server.Port)
 
 	// Graceful shutdown
 	go func() {
@@ -67,10 +45,11 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal
+	// Aguardar sinal de interrupção
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("⚠ Shutting down server...")
+	log.Println("✓ Server stopped gracefully")
 }

@@ -174,6 +174,190 @@ v1 := router.Group("/api/v1")
 }
 ```
 
+### 💉 Dependency Injection (Factory Pattern)
+
+#### Container Organization
+O projeto usa **Factory Pattern** para gerenciar dependências sem bibliotecas externas. Todos os containers estão em `cmd/api/container/`:
+
+**Estrutura:**
+```
+cmd/api/container/
+├── infrastructure.go  # Camada de Infraestrutura (DB, Repos, Services)
+├── application.go     # Camada de Aplicação (Use Cases)
+├── delivery.go        # Camada de Entrega (Handlers, Router)
+└── container.go       # Container Principal (orquestra tudo)
+```
+
+#### Como Funciona
+
+**1. Infrastructure Container** (`infrastructure.go`)
+```go
+type Infrastructure struct {
+    DB                 *PostgresDB
+    HasherService      port.HasherService
+    UserRepository     repository.UserRepository
+    // Adicionar novos repositórios aqui
+}
+
+func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
+    db, _ := persistence.NewPostgresDB(&cfg.Database)
+    return &Infrastructure{
+        DB:              db,
+        HasherService:   service.NewBcryptHasher(bcrypt.DefaultCost),
+        UserRepository:  persistence.NewPostgresUserRepository(db),
+        // Adicionar inicializações aqui (1 linha por repo)
+    }, nil
+}
+```
+
+**2. Application Container** (`application.go`)
+```go
+type Application struct {
+    CreateUserUseCase *usecase.CreateUserUseCase
+    // Adicionar novos use cases aqui
+}
+
+func NewApplication(infra *Infrastructure) *Application {
+    return &Application{
+        CreateUserUseCase: usecase.NewCreateUserUseCase(
+            infra.UserRepository,
+            infra.HasherService,
+        ),
+        // Adicionar inicializações aqui (1-3 linhas por use case)
+    }
+}
+```
+
+**3. Delivery Container** (`delivery.go`)
+```go
+type Delivery struct {
+    HealthHandler *deliveryHttp.HealthHandler
+    UserHandler   *deliveryHttp.UserHandler
+    Router        *deliveryHttp.Router
+    Engine        *gin.Engine
+}
+
+func NewDelivery(app *Application) *Delivery {
+    healthHandler := deliveryHttp.NewHealthHandler()
+    userHandler := deliveryHttp.NewUserHandler(app.CreateUserUseCase)
+    router := deliveryHttp.NewRouter(healthHandler, userHandler)
+
+    return &Delivery{
+        HealthHandler: healthHandler,
+        UserHandler:   userHandler,
+        Router:        router,
+        Engine:        router.SetupRoutes(),
+    }
+}
+```
+
+**4. Main Container** (`container.go`)
+```go
+type Container struct {
+    Config         *config.Config
+    Infrastructure *Infrastructure
+    Application    *Application
+    Delivery       *Delivery
+}
+
+func New(cfg *config.Config) (*Container, error) {
+    infra, _ := NewInfrastructure(cfg)
+    app := NewApplication(infra)
+    delivery := NewDelivery(app)
+
+    return &Container{
+        Config:         cfg,
+        Infrastructure: infra,
+        Application:    app,
+        Delivery:       delivery,
+    }, nil
+}
+```
+
+#### Uso no main.go
+
+```go
+func main() {
+    cfg, _ := config.Load()
+
+    // UMA LINHA para inicializar TUDO!
+    container, _ := container.New(cfg)
+    defer container.Close()
+
+    engine := container.GetEngine()
+    engine.Run(":8080")
+}
+```
+
+#### Adicionando Nova Entidade (Exemplo: Habit)
+
+**Passo 1:** Criar domain, repository interface, use case (como usual)
+
+**Passo 2:** Adicionar no `infrastructure.go`:
+```go
+type Infrastructure struct {
+    // ...
+    HabitRepository repository.HabitRepository  // ← Adicionar
+}
+
+func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
+    // ...
+    habitRepo := persistence.NewPostgresHabitRepository(db) // ← Adicionar
+    return &Infrastructure{
+        // ...
+        HabitRepository: habitRepo, // ← Adicionar
+    }, nil
+}
+```
+
+**Passo 3:** Adicionar no `application.go`:
+```go
+type Application struct {
+    // ...
+    CreateHabitUseCase *usecase.CreateHabitUseCase // ← Adicionar
+}
+
+func NewApplication(infra *Infrastructure) *Application {
+    return &Application{
+        // ...
+        CreateHabitUseCase: usecase.NewCreateHabitUseCase( // ← Adicionar
+            infra.HabitRepository,
+        ),
+    }
+}
+```
+
+**Passo 4:** Adicionar no `delivery.go`:
+```go
+type Delivery struct {
+    // ...
+    HabitHandler *deliveryHttp.HabitHandler // ← Adicionar
+}
+
+func NewDelivery(app *Application) *Delivery {
+    // ...
+    habitHandler := deliveryHttp.NewHabitHandler(app.CreateHabitUseCase) // ← Adicionar
+    router := deliveryHttp.NewRouter(
+        healthHandler,
+        userHandler,
+        habitHandler, // ← Adicionar no router
+    )
+    // ...
+}
+```
+
+**Total: ~10 linhas** para integrar uma nova entidade completa!
+
+#### Vantagens desta Abordagem
+
+✅ **Zero dependências externas** - Sem libs de DI
+✅ **Performance máxima** - Sem reflection
+✅ **Type-safe** - Erros em compile-time
+✅ **Escalável** - Funciona perfeitamente com 100+ entidades
+✅ **Testável** - Fácil mockar containers inteiros
+✅ **Explícito** - Código claro e auditável
+✅ **Clean Architecture compliant** - Separação por camadas
+
 ### 🗄️ Database Infrastructure (PostgreSQL)
 
 #### Database Setup

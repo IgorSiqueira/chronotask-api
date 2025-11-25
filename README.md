@@ -81,7 +81,12 @@ O projeto segue rigorosamente os princípios de **Clean Architecture** e **Domai
 chronotask-api/
 ├── cmd/
 │   └── api/                    # Ponto de entrada da aplicação
-│       └── main.go            # Bootstrap e injeção de dependências
+│       ├── main.go            # Bootstrap (55 linhas, limpo!)
+│       └── container/         # 💉 Dependency Injection (Factory Pattern)
+│           ├── infrastructure.go  # Container: DB, Repos, Services
+│           ├── application.go     # Container: Use Cases
+│           ├── delivery.go        # Container: Handlers, Router
+│           └── container.go       # Container Principal
 │
 ├── internal/                   # Código privado da aplicação
 │   ├── domain/                # Camada de Domínio (Core Business)
@@ -401,62 +406,218 @@ go tool cover -html=coverage.out -o coverage.html
 ### Padrões de Design
 
 - **Repository Pattern**: Abstração de acesso a dados
-- **Dependency Injection**: Inversão de controle manual
+- **Dependency Injection**: Factory Pattern para inversão de controle
 - **DTO Pattern**: Separação entre domínio e apresentação
-- **Factory Pattern**: Criação de entidades com validação
+- **Factory Pattern**: Criação de entidades com validação e containers DI
+
+### Dependency Injection (Factory Pattern)
+
+O projeto **NÃO usa bibliotecas de DI** como Wire ou Fx. Em vez disso, implementa **Factory Pattern** organizado em containers por camada.
+
+**Arquitetura dos Containers:**
+
+```
+┌─────────────────────────────────────────────┐
+│   main.go (55 linhas)                       │
+│   container.New(cfg) ← UMA LINHA!           │
+└────────────────┬────────────────────────────┘
+                 │
+    ┌────────────▼─────────────┐
+    │   Container Principal     │
+    │   (container.go)          │
+    └─┬──────────┬─────────┬───┘
+      │          │         │
+┌─────▼─────┐ ┌─▼────────▼───┐ ┌──────────▼────┐
+│Infrastructure│ │ Application  │ │   Delivery    │
+│  Container   │ │  Container   │ │   Container   │
+├──────────────┤ ├──────────────┤ ├───────────────┤
+│• DB          │ │• Use Cases   │ │• Handlers     │
+│• Repos       │ │              │ │• Router       │
+│• Services    │ │              │ │• Engine       │
+└──────────────┘ └──────────────┘ └───────────────┘
+```
+
+**Benefícios:**
+- ✅ **Zero deps externas** - Sem Wire, Fx ou Dig
+- ✅ **Performance máxima** - Sem reflection
+- ✅ **Type-safe** - Erros em compile-time
+- ✅ **Escalável** - 100+ entidades = apenas ~360 linhas organizadas
+- ✅ **Explícito** - Código claro e auditável
+- ✅ **Testável** - Fácil mockar containers
+
+**Localização:** `cmd/api/container/`
+- `infrastructure.go` - DB, Repositórios, Serviços (~70 linhas)
+- `application.go` - Use Cases (~150 linhas para 300 use cases)
+- `delivery.go` - Handlers, Router (~70 linhas)
+- `container.go` - Orquestração Principal (~70 linhas)
 
 ## 🛠️ Desenvolvimento
 
-### Adicionando uma Nova Feature
+### Adicionando uma Nova Feature (Exemplo: Habit)
 
-1. **Modelar o Domínio** (`internal/domain/`)
-   ```go
-   // entity/habit.go
-   type Habit struct {
-       id string
-       // ...
-   }
-   ```
+Graças ao sistema de containers, adicionar uma nova entidade é simples e requer apenas ~10 linhas de código nos containers!
 
-2. **Criar Interface do Repositório** (`internal/domain/repository/`)
-   ```go
-   type HabitRepository interface {
-       Create(ctx context.Context, habit *entity.Habit) error
-   }
-   ```
+#### Passo 1: Modelar o Domínio (Como Usual)
 
-3. **Implementar Use Case** (`internal/application/usecase/`)
-   ```go
-   type CreateHabitUseCase struct {
-       habitRepo repository.HabitRepository
-   }
-   ```
+**1.1. Criar Entidade** (`internal/domain/entity/habit.go`)
+```go
+type Habit struct {
+    id          string
+    name        string
+    description string
+    frequency   int
+    createdAt   time.Time
+}
 
-4. **Implementar Repositório** (`internal/infrastructure/persistence/`)
-   ```go
-   type PostgresHabitRepository struct {
-       db *PostgresDB
-   }
-   ```
+func NewHabit(...) (*Habit, error) {
+    // Validações e regras de negócio
+}
+```
 
-5. **Criar Handler HTTP** (`internal/delivery/http/`)
-   ```go
-   func (h *HabitHandler) Create(c *gin.Context) {
-       // ...
-   }
-   ```
+**1.2. Criar Interface do Repositório** (`internal/domain/repository/habit_repository.go`)
+```go
+type HabitRepository interface {
+    Create(ctx context.Context, habit *entity.Habit) error
+    FindByID(ctx context.Context, id string) (*entity.Habit, error)
+    List(ctx context.Context, userID string) ([]*entity.Habit, error)
+}
+```
 
-6. **Registrar Rota** (`internal/delivery/http/router.go`)
-   ```go
-   v1.POST("/habit", h.habitHandler.Create)
-   ```
+**1.3. Implementar Use Case** (`internal/application/usecase/create_habit_usecase.go`)
+```go
+type CreateHabitUseCase struct {
+    habitRepo repository.HabitRepository
+}
 
-7. **Injetar Dependências** (`cmd/api/main.go`)
-   ```go
-   habitRepo := persistence.NewPostgresHabitRepository(db)
-   createHabitUC := usecase.NewCreateHabitUseCase(habitRepo)
-   habitHandler := deliveryHttp.NewHabitHandler(createHabitUC)
-   ```
+func NewCreateHabitUseCase(habitRepo repository.HabitRepository) *CreateHabitUseCase {
+    return &CreateHabitUseCase{habitRepo: habitRepo}
+}
+
+func (uc *CreateHabitUseCase) Execute(ctx context.Context, input CreateHabitInput) (*CreateHabitOutput, error) {
+    // Lógica do use case
+}
+```
+
+**1.4. Implementar Repositório** (`internal/infrastructure/persistence/postgres_habit_repository.go`)
+```go
+type PostgresHabitRepository struct {
+    db *PostgresDB
+}
+
+func NewPostgresHabitRepository(db *PostgresDB) *PostgresHabitRepository {
+    return &PostgresHabitRepository{db: db}
+}
+
+func (r *PostgresHabitRepository) Create(ctx context.Context, habit *entity.Habit) error {
+    // SQL insert
+}
+```
+
+**1.5. Criar Handler** (`internal/delivery/http/habit_handler.go`)
+```go
+type HabitHandler struct {
+    createHabitUC *usecase.CreateHabitUseCase
+}
+
+func NewHabitHandler(createHabitUC *usecase.CreateHabitUseCase) *HabitHandler {
+    return &HabitHandler{createHabitUC: createHabitUC}
+}
+
+func (h *HabitHandler) Create(c *gin.Context) {
+    // Parse request, call use case, return response
+}
+```
+
+#### Passo 2: Integrar nos Containers (~10 linhas)
+
+**2.1. Adicionar no Infrastructure Container** (`cmd/api/container/infrastructure.go`)
+```go
+type Infrastructure struct {
+    // ... campos existentes
+    HabitRepository repository.HabitRepository // ← Adicionar 1 linha
+}
+
+func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
+    // ... código existente
+
+    // Adicionar repositório (2 linhas)
+    habitRepo := persistence.NewPostgresHabitRepository(db)
+
+    return &Infrastructure{
+        // ... campos existentes
+        HabitRepository: habitRepo, // ← Adicionar 1 linha
+    }, nil
+}
+```
+
+**2.2. Adicionar no Application Container** (`cmd/api/container/application.go`)
+```go
+type Application struct {
+    // ... campos existentes
+    CreateHabitUseCase *usecase.CreateHabitUseCase // ← Adicionar 1 linha
+}
+
+func NewApplication(infra *Infrastructure) *Application {
+    return &Application{
+        // ... campos existentes
+        CreateHabitUseCase: usecase.NewCreateHabitUseCase( // ← Adicionar 3 linhas
+            infra.HabitRepository,
+        ),
+    }
+}
+```
+
+**2.3. Adicionar no Delivery Container** (`cmd/api/container/delivery.go`)
+```go
+type Delivery struct {
+    // ... campos existentes
+    HabitHandler *deliveryHttp.HabitHandler // ← Adicionar 1 linha
+}
+
+func NewDelivery(app *Application) *Delivery {
+    // ... código existente
+
+    // Adicionar handler (1 linha)
+    habitHandler := deliveryHttp.NewHabitHandler(app.CreateHabitUseCase)
+
+    // Atualizar router (1 linha adicionando habitHandler)
+    router := deliveryHttp.NewRouter(
+        healthHandler,
+        userHandler,
+        habitHandler, // ← Adicionar
+    )
+
+    return &Delivery{
+        // ... campos existentes
+        HabitHandler: habitHandler, // ← Adicionar 1 linha
+    }
+}
+```
+
+**2.4. Registrar Rotas** (`internal/delivery/http/router.go`)
+```go
+func (r *Router) SetupRoutes() *gin.Engine {
+    router := gin.Default()
+
+    router.GET("/health", r.healthHandler.Check)
+
+    v1 := router.Group("/api/v1")
+    {
+        // User routes
+        v1.POST("/user", r.userHandler.Create)
+
+        // Habit routes (adicionar)
+        v1.POST("/habit", r.habitHandler.Create)
+        v1.GET("/habits", r.habitHandler.List)
+    }
+
+    return router
+}
+```
+
+**✅ Pronto!** Sua nova entidade está totalmente integrada com apenas ~10 linhas nos containers!
+
+**Importante:** Não é necessário tocar no `main.go` - ele continua limpo!
 
 ### Comandos Úteis
 

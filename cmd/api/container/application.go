@@ -19,9 +19,13 @@ type Application struct {
 	// UpdateHabitUseCase *usecase.UpdateHabitUseCase
 	// ListHabitsUseCase  *usecase.ListHabitsUseCase
 
-	// Character Use Cases (futuro)
-	// CreateCharacterUseCase *usecase.CreateCharacterUseCase
+	// Character Use Cases
+	CreateCharacterUseCase    *usecase.CreateCharacterUseCase
+	GetUserCharactersUseCase  *usecase.GetUserCharactersUseCase
 	// LevelUpCharacterUseCase *usecase.LevelUpCharacterUseCase
+
+	// Character Attribute Use Cases
+	GetCharacterAttributesUseCase *usecase.GetCharacterAttributesUseCase
 }
 
 // NewApplication inicializa toda a camada de aplicação
@@ -54,10 +58,18 @@ func NewApplication(infra *Infrastructure) *Application {
 		// ),
 
 		// Character Use Cases
-		// CreateCharacterUseCase: usecase.NewCreateCharacterUseCase(
-		//     infra.CharacterRepository,
-		//     infra.UserRepository,
-		// ),
+		CreateCharacterUseCase: usecase.NewCreateCharacterUseCase(
+			infra.CharacterRepository,
+		),
+		GetUserCharactersUseCase: usecase.NewGetUserCharactersUseCase(
+			infra.CharacterRepository,
+		),
+
+		// Character Attribute Use Cases
+		GetCharacterAttributesUseCase: usecase.NewGetCharacterAttributesUseCase(
+			infra.CharacterRepository,
+			infra.CharacterAttributeRepository,
+		),
 	}
 
 	return app

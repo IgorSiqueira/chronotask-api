@@ -23,9 +23,10 @@ type Infrastructure struct {
 
 	// Repositories
 	// Adicione novos repositórios aqui conforme necessário
-	UserRepository repository.UserRepository
-	// HabitRepository repository.HabitRepository     // Exemplo futuro
-	// CharacterRepository repository.CharacterRepository // Exemplo futuro
+	UserRepository               repository.UserRepository
+	CharacterRepository          repository.CharacterRepository
+	CharacterAttributeRepository repository.CharacterAttributeRepository
+	// HabitRepository repository.HabitRepository // Exemplo futuro
 }
 
 // NewInfrastructure inicializa toda a camada de infraestrutura
@@ -53,18 +54,20 @@ func NewInfrastructure(cfg *config.Config) (*Infrastructure, error) {
 
 	// Inicializar repositórios
 	userRepo := persistence.NewPostgresUserRepository(db)
+	characterRepo := persistence.NewPostgresCharacterRepository(db)
+	characterAttributeRepo := persistence.NewPostgresCharacterAttributeRepository(db)
 
 	// Futuro: adicionar novos repositórios aqui
 	// habitRepo := persistence.NewPostgresHabitRepository(db)
-	// characterRepo := persistence.NewPostgresCharacterRepository(db)
 
 	infra := &Infrastructure{
-		DB:             db,
-		HasherService:  hasherService,
-		JWTService:     jwtService,
-		UserRepository: userRepo,
+		DB:                           db,
+		HasherService:                hasherService,
+		JWTService:                   jwtService,
+		UserRepository:               userRepo,
+		CharacterRepository:          characterRepo,
+		CharacterAttributeRepository: characterAttributeRepo,
 		// HabitRepository: habitRepo,
-		// CharacterRepository: characterRepo,
 	}
 
 	return infra, nil

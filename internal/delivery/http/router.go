@@ -7,9 +7,11 @@ import (
 
 // Router holds all handlers and configures routes
 type Router struct {
-	healthHandler  *HealthHandler
-	userHandler    *UserHandler
-	authMiddleware *middleware.AuthMiddleware
+	healthHandler             *HealthHandler
+	userHandler               *UserHandler
+	characterHandler          *CharacterHandler
+	characterAttributeHandler *CharacterAttributeHandler
+	authMiddleware            *middleware.AuthMiddleware
 }
 
 // NewRouter creates a new Router with all handlers
@@ -17,11 +19,15 @@ func NewRouter(
 	healthHandler *HealthHandler,
 	userHandler *UserHandler,
 	authMiddleware *middleware.AuthMiddleware,
+	characterHandler *CharacterHandler,
+	characterAttributeHandler *CharacterAttributeHandler,
 ) *Router {
 	return &Router{
-		healthHandler:  healthHandler,
-		userHandler:    userHandler,
-		authMiddleware: authMiddleware,
+		healthHandler:             healthHandler,
+		userHandler:               userHandler,
+		characterHandler:          characterHandler,
+		characterAttributeHandler: characterAttributeHandler,
+		authMiddleware:            authMiddleware,
 	}
 }
 
@@ -45,6 +51,13 @@ func (r *Router) SetupRoutes() *gin.Engine {
 		{
 			// User protected routes
 			authenticated.GET("/user/profile", r.userHandler.GetProfile)
+			authenticated.GET("/user/character", r.characterHandler.GetList)
+
+			// Character protected routes
+			authenticated.POST("/character", r.characterHandler.Create)
+
+			// Character Attribute protected routes
+			authenticated.GET("/character/:characterId/attribute", r.characterAttributeHandler.GetByCharacterID)
 
 			// Future protected routes
 			// authenticated.PUT("/user/profile", r.userHandler.UpdateProfile)

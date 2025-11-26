@@ -10,10 +10,11 @@ import (
 // Inclui: Handlers, Middleware, Router, Engine
 type Delivery struct {
 	// Handlers
-	HealthHandler *deliveryHttp.HealthHandler
-	UserHandler   *deliveryHttp.UserHandler
-	// HabitHandler    *deliveryHttp.HabitHandler    // Exemplo futuro
-	// CharacterHandler *deliveryHttp.CharacterHandler // Exemplo futuro
+	HealthHandler             *deliveryHttp.HealthHandler
+	UserHandler               *deliveryHttp.UserHandler
+	CharacterHandler          *deliveryHttp.CharacterHandler
+	CharacterAttributeHandler *deliveryHttp.CharacterAttributeHandler
+	// HabitHandler *deliveryHttp.HabitHandler // Exemplo futuro
 
 	// Middleware
 	AuthMiddleware *middleware.AuthMiddleware
@@ -36,15 +37,20 @@ func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
 		app.LoginUserUseCase,
 	)
 
+	characterHandler := deliveryHttp.NewCharacterHandler(
+		app.CreateCharacterUseCase,
+		app.GetUserCharactersUseCase,
+	)
+
+	characterAttributeHandler := deliveryHttp.NewCharacterAttributeHandler(
+		app.GetCharacterAttributesUseCase,
+	)
+
 	// Futuro: adicionar novos handlers aqui
 	// habitHandler := deliveryHttp.NewHabitHandler(
 	//     app.CreateHabitUseCase,
 	//     app.UpdateHabitUseCase,
 	//     app.ListHabitsUseCase,
-	// )
-	// characterHandler := deliveryHttp.NewCharacterHandler(
-	//     app.CreateCharacterUseCase,
-	//     app.LevelUpCharacterUseCase,
 	// )
 
 	// Inicializar middleware
@@ -55,19 +61,21 @@ func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
 		healthHandler,
 		userHandler,
 		authMiddleware,
-		// habitHandler,    // Adicionar quando criar
-		// characterHandler, // Adicionar quando criar
+		characterHandler,
+		characterAttributeHandler,
+		// habitHandler, // Adicionar quando criar
 	)
 
 	// Setup routes
 	engine := router.SetupRoutes()
 
 	delivery := &Delivery{
-		HealthHandler:  healthHandler,
-		UserHandler:    userHandler,
-		AuthMiddleware: authMiddleware,
+		HealthHandler:             healthHandler,
+		UserHandler:               userHandler,
+		CharacterHandler:          characterHandler,
+		CharacterAttributeHandler: characterAttributeHandler,
+		AuthMiddleware:            authMiddleware,
 		// HabitHandler: habitHandler,
-		// CharacterHandler: characterHandler,
 		Router: router,
 		Engine: engine,
 	}

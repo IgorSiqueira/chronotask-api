@@ -12,6 +12,7 @@ type Router struct {
 	characterHandler          *CharacterHandler
 	characterAttributeHandler *CharacterAttributeHandler
 	authMiddleware            *middleware.AuthMiddleware
+	corsMiddleware            *middleware.CORSMiddleware
 }
 
 // NewRouter creates a new Router with all handlers
@@ -19,6 +20,7 @@ func NewRouter(
 	healthHandler *HealthHandler,
 	userHandler *UserHandler,
 	authMiddleware *middleware.AuthMiddleware,
+	corsMiddleware *middleware.CORSMiddleware,
 	characterHandler *CharacterHandler,
 	characterAttributeHandler *CharacterAttributeHandler,
 ) *Router {
@@ -28,12 +30,16 @@ func NewRouter(
 		characterHandler:          characterHandler,
 		characterAttributeHandler: characterAttributeHandler,
 		authMiddleware:            authMiddleware,
+		corsMiddleware:            corsMiddleware,
 	}
 }
 
 // SetupRoutes configures all application routes
 func (r *Router) SetupRoutes() *gin.Engine {
 	router := gin.Default()
+
+	// Apply CORS middleware globally
+	router.Use(r.corsMiddleware.Handler())
 
 	// Health check endpoint (public)
 	router.GET("/health", r.healthHandler.Check)

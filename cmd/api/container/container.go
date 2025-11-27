@@ -44,7 +44,7 @@ func New(cfg *config.Config) (*Container, error) {
 	app := NewApplication(infra)
 
 	// 3. Inicializar camada de Entrega (depende da Aplicação e Infraestrutura)
-	delivery := NewDelivery(app, infra)
+	delivery := NewDelivery(app, infra, cfg)
 
 	container := &Container{
 		Config:         cfg,

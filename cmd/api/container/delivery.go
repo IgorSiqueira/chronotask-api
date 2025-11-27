@@ -2,6 +2,7 @@ package container
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/igor/chronotask-api/config"
 	deliveryHttp "github.com/igor/chronotask-api/internal/delivery/http"
 	"github.com/igor/chronotask-api/internal/delivery/http/middleware"
 )
@@ -18,6 +19,7 @@ type Delivery struct {
 
 	// Middleware
 	AuthMiddleware *middleware.AuthMiddleware
+	CORSMiddleware *middleware.CORSMiddleware
 
 	// Router e Engine
 	Router *deliveryHttp.Router
@@ -29,7 +31,7 @@ type Delivery struct {
 // 1. Adicione o campo no struct acima
 // 2. Inicialize aqui (1 linha): delivery.NovoHandler = deliveryHttp.NewNovoHandler(app.NovoUseCase)
 // 3. Adicione no NewRouter (linha 38)
-func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
+func NewDelivery(app *Application, infra *Infrastructure, cfg *config.Config) *Delivery {
 	// Inicializar handlers
 	healthHandler := deliveryHttp.NewHealthHandler()
 	userHandler := deliveryHttp.NewUserHandler(
@@ -55,12 +57,14 @@ func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
 
 	// Inicializar middleware
 	authMiddleware := middleware.NewAuthMiddleware(infra.JWTService)
+	corsMiddleware := middleware.NewCORSMiddleware(cfg.CORS.AllowedOrigins)
 
 	// Inicializar router
 	router := deliveryHttp.NewRouter(
 		healthHandler,
 		userHandler,
 		authMiddleware,
+		corsMiddleware,
 		characterHandler,
 		characterAttributeHandler,
 		// habitHandler, // Adicionar quando criar
@@ -75,6 +79,7 @@ func NewDelivery(app *Application, infra *Infrastructure) *Delivery {
 		CharacterHandler:          characterHandler,
 		CharacterAttributeHandler: characterAttributeHandler,
 		AuthMiddleware:            authMiddleware,
+		CORSMiddleware:            corsMiddleware,
 		// HabitHandler: habitHandler,
 		Router: router,
 		Engine: engine,

@@ -1,0 +1,80 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: chronotask-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-chronotask}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+      TZ: America/Sao_Paulo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./internal/infrastructure/persistence/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-chronotask}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chronotask-network
+
+  # ChronoTask API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GO_VERSION: "1.23"
+    container_name: chronotask-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-chronotask}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_DURATION: ${JWT_ACCESS_TOKEN_DURATION:-15m}
+      JWT_REFRESH_TOKEN_DURATION: ${JWT_REFRESH_TOKEN_DURATION:-168h}
+
+      # Server
+      PORT: ${PORT:-8080}
+      GIN_MODE: ${GIN_MODE:-release}
+
+      # Timezone
+      TZ: America/Sao_Paulo
+    ports:
+      - "${PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - chronotask-network
+    labels:
+      # Coolify labels para proxy reverso
+      - "coolify.managed=true"
+      - "coolify.name=chronotask-api"
+      - "coolify.http.port=8080"
+
+networks:
+  chronotask-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

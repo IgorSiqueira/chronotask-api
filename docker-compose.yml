@@ -2,14 +2,14 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: chronotask-postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-chronotask-postgres}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-chronotask}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: "-E UTF8"
-      TZ: America/Sao_Paulo
+      TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./internal/infrastructure/persistence/migrations:/docker-entrypoint-initdb.d:ro
@@ -30,33 +30,26 @@ services:
       dockerfile: Dockerfile
       args:
         GO_VERSION: "1.23"
-    container_name: chronotask-api
+    container_name: ${API_CONTAINER_NAME:-chronotask-api}
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      # Database
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT_INTERNAL:-5432}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME:-chronotask}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
-
-      # JWT
       JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_TOKEN_DURATION: ${JWT_ACCESS_TOKEN_DURATION:-15m}
       JWT_REFRESH_TOKEN_DURATION: ${JWT_REFRESH_TOKEN_DURATION:-168h}
-
-      # Server
       PORT: ${PORT:-8080}
       GIN_MODE: ${GIN_MODE:-release}
-
-      # Timezone
-      TZ: America/Sao_Paulo
+      TZ: ${TZ:-America/Sao_Paulo}
     ports:
-      - "${PORT:-8080}:8080"
+      - "${API_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s

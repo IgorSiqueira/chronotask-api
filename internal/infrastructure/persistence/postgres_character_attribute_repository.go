@@ -24,17 +24,18 @@ func NewPostgresCharacterAttributeRepository(db *PostgresDB) *PostgresCharacterA
 // Create persists a new character attribute
 func (r *PostgresCharacterAttributeRepository) Create(ctx context.Context, attribute *entity.CharacterAttribute) error {
 	query := `
-		INSERT INTO character_attributes (id, attribute_name, value, character_id, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO character_attributes (attribute_name, value, character_id, created_at)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
 	`
 
-	_, err := r.db.Pool.Exec(ctx, query,
-		attribute.ID(),
+	var id int
+	err := r.db.Pool.QueryRow(ctx, query,
 		attribute.AttributeName(),
 		attribute.Value(),
 		attribute.CharacterID(),
 		attribute.CreatedAt(),
-	)
+	).Scan(&id)
 
 	if err != nil {
 		return fmt.Errorf("failed to create character attribute: %w", err)
@@ -44,7 +45,7 @@ func (r *PostgresCharacterAttributeRepository) Create(ctx context.Context, attri
 }
 
 // FindByID retrieves a character attribute by its ID
-func (r *PostgresCharacterAttributeRepository) FindByID(ctx context.Context, id string) (*entity.CharacterAttribute, error) {
+func (r *PostgresCharacterAttributeRepository) FindByID(ctx context.Context, id int) (*entity.CharacterAttribute, error) {
 	query := `
 		SELECT id, attribute_name, value, character_id, created_at
 		FROM character_attributes
@@ -52,7 +53,7 @@ func (r *PostgresCharacterAttributeRepository) FindByID(ctx context.Context, id 
 	`
 
 	var (
-		attributeID   string
+		attributeID   int
 		attributeName string
 		value         int
 		characterID   string
@@ -91,7 +92,7 @@ func (r *PostgresCharacterAttributeRepository) FindByCharacterID(ctx context.Con
 		SELECT id, attribute_name, value, character_id, created_at
 		FROM character_attributes
 		WHERE character_id = $1
-		ORDER BY attribute_name ASC
+		ORDER BY id ASC
 	`
 
 	rows, err := r.db.Pool.Query(ctx, query, characterID)
@@ -104,7 +105,7 @@ func (r *PostgresCharacterAttributeRepository) FindByCharacterID(ctx context.Con
 
 	for rows.Next() {
 		var (
-			attributeID   string
+			attributeID   int
 			attributeName string
 			value         int
 			charID        string
@@ -150,11 +151,11 @@ func (r *PostgresCharacterAttributeRepository) FindByCharacterIDAndName(ctx cont
 	`
 
 	var (
-		attributeID   string
-		attrName      string
-		value         int
-		charID        string
-		createdAt     time.Time
+		attributeID int
+		attrName    string
+		value       int
+		charID      string
+		createdAt   time.Time
 	)
 
 	err := r.db.Pool.QueryRow(ctx, query, characterID, attributeName).Scan(
@@ -209,7 +210,7 @@ func (r *PostgresCharacterAttributeRepository) Update(ctx context.Context, attri
 }
 
 // Delete removes a character attribute
-func (r *PostgresCharacterAttributeRepository) Delete(ctx context.Context, id string) error {
+func (r *PostgresCharacterAttributeRepository) Delete(ctx context.Context, id int) error {
 	query := `DELETE FROM character_attributes WHERE id = $1`
 
 	result, err := r.db.Pool.Exec(ctx, query, id)

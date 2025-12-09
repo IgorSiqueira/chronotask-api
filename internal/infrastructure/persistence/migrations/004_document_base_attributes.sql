@@ -1,0 +1,26 @@
+-- Documentation: Base Character Attributes
+--
+-- This migration documents the base attributes that are automatically created
+-- for each new character in the system. These attributes are created programmatically
+-- by the CreateCharacterUseCase, not by this migration.
+--
+-- The following attributes are created for every new character with an initial value of 5:
+--
+-- 1. Força (FOR) - Strength - Represents physical power and melee combat ability
+-- 2. Constituição (CON) - Constitution - Represents health, stamina, and physical resistance
+-- 3. Vontade (VON) - Willpower - Represents mental fortitude and resistance to mental effects
+-- 4. Sabedoria (SAB) - Wisdom - Represents perception, insight, and judgment
+-- 5. Inteligência (INT) - Intelligence - Represents reasoning, memory, and magical ability
+-- 6. Carisma (CAR) - Charisma - Represents social influence and leadership
+-- 7. Destreza (DES) - Dexterity - Represents agility, reflexes, and ranged combat ability
+--
+-- Initial Value: 5 (for all attributes)
+--
+-- These attributes are stored in the character_attributes table with the following structure:
+-- - id: SERIAL PRIMARY KEY
+-- - attribute_name: VARCHAR(50) NOT NULL (e.g., "Força", "Destreza")
+-- - value: INTEGER NOT NULL DEFAULT 0 (initial value is 5 for base attributes)
+-- - character_id: VARCHAR(255) NOT NULL (references characters.id)
+-- - created_at: TIMESTAMP NOT NULL DEFAULT NOW()
+--
+-- No database changes are made by this migration - it exists purely for documentation purposes.

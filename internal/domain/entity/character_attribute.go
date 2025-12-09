@@ -8,7 +8,7 @@ import (
 
 // CharacterAttribute represents a character's attribute (Domain Entity)
 type CharacterAttribute struct {
-	id            string
+	id            int
 	attributeName string
 	value         int
 	characterID   string
@@ -17,16 +17,10 @@ type CharacterAttribute struct {
 
 // NewCharacterAttribute creates a new CharacterAttribute entity with validation
 func NewCharacterAttribute(
-	id string,
 	attributeName string,
 	value int,
 	characterID string,
 ) (*CharacterAttribute, error) {
-	// Validate ID
-	if id == "" {
-		return nil, fmt.Errorf("attribute id cannot be empty")
-	}
-
 	// Validate attribute name
 	attributeName = strings.TrimSpace(attributeName)
 	if attributeName == "" {
@@ -50,7 +44,7 @@ func NewCharacterAttribute(
 	}
 
 	return &CharacterAttribute{
-		id:            id,
+		id:            0, // Will be set by database sequence
 		attributeName: attributeName,
 		value:         value,
 		characterID:   characterID,
@@ -60,7 +54,7 @@ func NewCharacterAttribute(
 
 // Getters (Read-only access to ensure encapsulation)
 
-func (ca *CharacterAttribute) ID() string {
+func (ca *CharacterAttribute) ID() int {
 	return ca.id
 }
 
@@ -120,7 +114,7 @@ func (ca *CharacterAttribute) DecrementValue(amount int) error {
 
 // ReconstituteCharacterAttribute creates a CharacterAttribute from existing data (for repository loading)
 func ReconstituteCharacterAttribute(
-	id string,
+	id int,
 	attributeName string,
 	value int,
 	characterID string,

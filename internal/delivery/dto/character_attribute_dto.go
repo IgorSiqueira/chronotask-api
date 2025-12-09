@@ -2,7 +2,7 @@ package dto
 
 // CharacterAttributeResponse represents a character attribute in the response
 type CharacterAttributeResponse struct {
-	ID            string `json:"id"`
+	ID            int    `json:"id"`
 	AttributeName string `json:"attributeName"`
 	Value         int    `json:"value"`
 	CharacterID   string `json:"characterId"`

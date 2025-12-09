@@ -9,6 +9,20 @@ import (
 	"github.com/igor/chronotask-api/internal/domain/repository"
 )
 
+// Base attributes that every new character starts with
+var baseAttributes = []struct {
+	name  string
+	value int
+}{
+	{"Força", 5},
+	{"Constituição", 5},
+	{"Vontade", 5},
+	{"Sabedoria", 5},
+	{"Inteligência", 5},
+	{"Carisma", 5},
+	{"Destreza", 5},
+}
+
 // CreateCharacterInput represents the input for creating a character
 type CreateCharacterInput struct {
 	Name   string
@@ -28,15 +42,18 @@ type CreateCharacterOutput struct {
 
 // CreateCharacterUseCase handles the creation of new characters
 type CreateCharacterUseCase struct {
-	characterRepo repository.CharacterRepository
+	characterRepo          repository.CharacterRepository
+	characterAttributeRepo repository.CharacterAttributeRepository
 }
 
 // NewCreateCharacterUseCase creates a new CreateCharacterUseCase
 func NewCreateCharacterUseCase(
 	characterRepo repository.CharacterRepository,
+	characterAttributeRepo repository.CharacterAttributeRepository,
 ) *CreateCharacterUseCase {
 	return &CreateCharacterUseCase{
-		characterRepo: characterRepo,
+		characterRepo:          characterRepo,
+		characterAttributeRepo: characterAttributeRepo,
 	}
 }
 
@@ -67,6 +84,22 @@ func (uc *CreateCharacterUseCase) Execute(ctx context.Context, input CreateChara
 	// Persist character
 	if err := uc.characterRepo.Create(ctx, character); err != nil {
 		return nil, fmt.Errorf("failed to save character: %w", err)
+	}
+
+	// Create base attributes for the new character
+	for _, baseAttr := range baseAttributes {
+		attribute, err := entity.NewCharacterAttribute(
+			baseAttr.name,
+			baseAttr.value,
+			character.ID(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create base attribute '%s': %w", baseAttr.name, err)
+		}
+
+		if err := uc.characterAttributeRepo.Create(ctx, attribute); err != nil {
+			return nil, fmt.Errorf("failed to save base attribute '%s': %w", baseAttr.name, err)
+		}
 	}
 
 	// Return output

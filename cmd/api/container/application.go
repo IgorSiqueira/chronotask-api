@@ -60,6 +60,7 @@ func NewApplication(infra *Infrastructure) *Application {
 		// Character Use Cases
 		CreateCharacterUseCase: usecase.NewCreateCharacterUseCase(
 			infra.CharacterRepository,
+			infra.CharacterAttributeRepository,
 		),
 		GetUserCharactersUseCase: usecase.NewGetUserCharactersUseCase(
 			infra.CharacterRepository,

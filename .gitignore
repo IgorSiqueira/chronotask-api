@@ -251,3 +251,5 @@ docker-compose.override.yml
 
 # Kubernetes
 *.kubeconfig
+api
+bin/

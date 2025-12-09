@@ -1,6 +1,6 @@
 -- Create character_attributes table
 CREATE TABLE IF NOT EXISTS character_attributes (
-    id VARCHAR(255) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     attribute_name VARCHAR(50) NOT NULL,
     value INTEGER NOT NULL DEFAULT 0,
     character_id VARCHAR(255) NOT NULL,

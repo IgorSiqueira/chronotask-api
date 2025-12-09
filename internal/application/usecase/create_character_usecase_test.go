@@ -15,6 +15,66 @@ type mockCharacterRepository struct {
 	existsByUserIDFunc func(ctx context.Context, userID string) (bool, error)
 }
 
+// Mock CharacterAttributeRepository
+type mockCharacterAttributeRepository struct {
+	createFunc                       func(ctx context.Context, attribute *entity.CharacterAttribute) error
+	findByIDFunc                     func(ctx context.Context, id int) (*entity.CharacterAttribute, error)
+	findByCharacterIDFunc            func(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error)
+	findByCharacterIDAndNameFunc     func(ctx context.Context, characterID string, attributeName string) (*entity.CharacterAttribute, error)
+	updateFunc                       func(ctx context.Context, attribute *entity.CharacterAttribute) error
+	deleteFunc                       func(ctx context.Context, id int) error
+	existsByCharacterIDAndNameFunc   func(ctx context.Context, characterID string, attributeName string) (bool, error)
+}
+
+func (m *mockCharacterAttributeRepository) Create(ctx context.Context, attribute *entity.CharacterAttribute) error {
+	if m.createFunc != nil {
+		return m.createFunc(ctx, attribute)
+	}
+	return nil
+}
+
+func (m *mockCharacterAttributeRepository) FindByID(ctx context.Context, id int) (*entity.CharacterAttribute, error) {
+	if m.findByIDFunc != nil {
+		return m.findByIDFunc(ctx, id)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockCharacterAttributeRepository) FindByCharacterID(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
+	if m.findByCharacterIDFunc != nil {
+		return m.findByCharacterIDFunc(ctx, characterID)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockCharacterAttributeRepository) FindByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (*entity.CharacterAttribute, error) {
+	if m.findByCharacterIDAndNameFunc != nil {
+		return m.findByCharacterIDAndNameFunc(ctx, characterID, attributeName)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockCharacterAttributeRepository) Update(ctx context.Context, attribute *entity.CharacterAttribute) error {
+	if m.updateFunc != nil {
+		return m.updateFunc(ctx, attribute)
+	}
+	return errors.New("not implemented")
+}
+
+func (m *mockCharacterAttributeRepository) Delete(ctx context.Context, id int) error {
+	if m.deleteFunc != nil {
+		return m.deleteFunc(ctx, id)
+	}
+	return errors.New("not implemented")
+}
+
+func (m *mockCharacterAttributeRepository) ExistsByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (bool, error) {
+	if m.existsByCharacterIDAndNameFunc != nil {
+		return m.existsByCharacterIDAndNameFunc(ctx, characterID, attributeName)
+	}
+	return false, nil
+}
+
 func (m *mockCharacterRepository) Create(ctx context.Context, character *entity.Character) error {
 	if m.createFunc != nil {
 		return m.createFunc(ctx, character)
@@ -63,7 +123,13 @@ func TestCreateCharacterUseCase_Execute_Success(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{
+		createFunc: func(ctx context.Context, attribute *entity.CharacterAttribute) error {
+			return nil // Success
+		},
+	}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	input := usecase.CreateCharacterInput{
 		Name:   "Warrior King",
@@ -116,7 +182,9 @@ func TestCreateCharacterUseCase_Execute_UserAlreadyHasCharacter(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	input := usecase.CreateCharacterInput{
 		Name:   "Warrior King",
@@ -146,7 +214,9 @@ func TestCreateCharacterUseCase_Execute_ExistsByUserIDError(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	input := usecase.CreateCharacterInput{
 		Name:   "Warrior King",
@@ -171,7 +241,9 @@ func TestCreateCharacterUseCase_Execute_InvalidCharacterName(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	tests := []struct {
 		name          string
@@ -212,7 +284,9 @@ func TestCreateCharacterUseCase_Execute_CreateRepositoryError(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	input := usecase.CreateCharacterInput{
 		Name:   "Warrior King",
@@ -237,7 +311,9 @@ func TestCreateCharacterUseCase_Execute_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	useCase := usecase.NewCreateCharacterUseCase(mockRepo)
+	mockAttrRepo := &mockCharacterAttributeRepository{}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
 
 	input := usecase.CreateCharacterInput{
 		Name:   "Warrior King",
@@ -251,6 +327,105 @@ func TestCreateCharacterUseCase_Execute_ContextCancellation(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Execute() error = nil, want error for cancelled context")
+	}
+
+	if output != nil {
+		t.Errorf("Execute() output = %v, want nil", output)
+	}
+}
+
+func TestCreateCharacterUseCase_Execute_CreatesBaseAttributes(t *testing.T) {
+	mockRepo := &mockCharacterRepository{
+		existsByUserIDFunc: func(ctx context.Context, userID string) (bool, error) {
+			return false, nil
+		},
+		createFunc: func(ctx context.Context, character *entity.Character) error {
+			return nil
+		},
+	}
+
+	// Track how many attributes are created
+	attributesCreated := 0
+	expectedAttributes := map[string]int{
+		"Força":         5,
+		"Constituição":  5,
+		"Vontade":       5,
+		"Sabedoria":     5,
+		"Inteligência":  5,
+		"Carisma":       5,
+		"Destreza":      5,
+	}
+
+	mockAttrRepo := &mockCharacterAttributeRepository{
+		createFunc: func(ctx context.Context, attribute *entity.CharacterAttribute) error {
+			attributesCreated++
+
+			// Validate that the attribute is one of the expected base attributes
+			expectedValue, exists := expectedAttributes[attribute.AttributeName()]
+			if !exists {
+				t.Errorf("Unexpected attribute created: %s", attribute.AttributeName())
+			}
+
+			if attribute.Value() != expectedValue {
+				t.Errorf("Attribute %s has value %d, want %d",
+					attribute.AttributeName(), attribute.Value(), expectedValue)
+			}
+
+			return nil
+		},
+	}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
+
+	input := usecase.CreateCharacterInput{
+		Name:   "Warrior King",
+		UserID: "user-123",
+	}
+
+	output, err := useCase.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("Execute() error = %v, want nil", err)
+	}
+
+	if output == nil {
+		t.Fatal("Execute() output = nil, want non-nil")
+	}
+
+	// Verify that all 7 base attributes were created
+	expectedCount := 7
+	if attributesCreated != expectedCount {
+		t.Errorf("Created %d attributes, want %d", attributesCreated, expectedCount)
+	}
+}
+
+func TestCreateCharacterUseCase_Execute_AttributeCreationError(t *testing.T) {
+	mockRepo := &mockCharacterRepository{
+		existsByUserIDFunc: func(ctx context.Context, userID string) (bool, error) {
+			return false, nil
+		},
+		createFunc: func(ctx context.Context, character *entity.Character) error {
+			return nil
+		},
+	}
+
+	mockAttrRepo := &mockCharacterAttributeRepository{
+		createFunc: func(ctx context.Context, attribute *entity.CharacterAttribute) error {
+			return errors.New("failed to create attribute")
+		},
+	}
+
+	useCase := usecase.NewCreateCharacterUseCase(mockRepo, mockAttrRepo)
+
+	input := usecase.CreateCharacterInput{
+		Name:   "Warrior King",
+		UserID: "user-123",
+	}
+
+	output, err := useCase.Execute(context.Background(), input)
+
+	if err == nil {
+		t.Fatal("Execute() error = nil, want error for attribute creation failure")
 	}
 
 	if output != nil {

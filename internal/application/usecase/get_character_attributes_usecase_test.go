@@ -11,39 +11,39 @@ import (
 	"github.com/igor/chronotask-api/internal/domain/entity"
 )
 
-// Mock CharacterAttributeRepository
-type mockCharacterAttributeRepository struct {
+// Mock CharacterAttributeRepository for GetCharacterAttributes tests
+type mockCharacterAttributeRepositoryGet struct {
 	findByCharacterIDFunc func(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error)
 }
 
-func (m *mockCharacterAttributeRepository) Create(ctx context.Context, attribute *entity.CharacterAttribute) error {
+func (m *mockCharacterAttributeRepositoryGet) Create(ctx context.Context, attribute *entity.CharacterAttribute) error {
 	return errors.New("not implemented")
 }
 
-func (m *mockCharacterAttributeRepository) FindByID(ctx context.Context, id string) (*entity.CharacterAttribute, error) {
+func (m *mockCharacterAttributeRepositoryGet) FindByID(ctx context.Context, id int) (*entity.CharacterAttribute, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockCharacterAttributeRepository) FindByCharacterID(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
+func (m *mockCharacterAttributeRepositoryGet) FindByCharacterID(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
 	if m.findByCharacterIDFunc != nil {
 		return m.findByCharacterIDFunc(ctx, characterID)
 	}
 	return []*entity.CharacterAttribute{}, nil
 }
 
-func (m *mockCharacterAttributeRepository) FindByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (*entity.CharacterAttribute, error) {
+func (m *mockCharacterAttributeRepositoryGet) FindByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (*entity.CharacterAttribute, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockCharacterAttributeRepository) Update(ctx context.Context, attribute *entity.CharacterAttribute) error {
+func (m *mockCharacterAttributeRepositoryGet) Update(ctx context.Context, attribute *entity.CharacterAttribute) error {
 	return errors.New("not implemented")
 }
 
-func (m *mockCharacterAttributeRepository) Delete(ctx context.Context, id string) error {
+func (m *mockCharacterAttributeRepositoryGet) Delete(ctx context.Context, id int) error {
 	return errors.New("not implemented")
 }
 
-func (m *mockCharacterAttributeRepository) ExistsByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (bool, error) {
+func (m *mockCharacterAttributeRepositoryGet) ExistsByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (bool, error) {
 	return false, errors.New("not implemented")
 }
 
@@ -103,9 +103,9 @@ func TestGetCharacterAttributesUseCase_Execute_Success(t *testing.T) {
 	)
 
 	mockAttributes := []*entity.CharacterAttribute{
-		entity.ReconstituteCharacterAttribute("attr-1", "Strength", 10, "char-123", time.Now()),
-		entity.ReconstituteCharacterAttribute("attr-2", "Agility", 15, "char-123", time.Now()),
-		entity.ReconstituteCharacterAttribute("attr-3", "Intelligence", 20, "char-123", time.Now()),
+		entity.ReconstituteCharacterAttribute(1, "Força", 10, "char-123", time.Now()),
+		entity.ReconstituteCharacterAttribute(2, "Destreza", 15, "char-123", time.Now()),
+		entity.ReconstituteCharacterAttribute(3, "Inteligência", 20, "char-123", time.Now()),
 	}
 
 	mockCharRepo := &mockCharacterRepositoryForAttributes{
@@ -117,7 +117,7 @@ func TestGetCharacterAttributesUseCase_Execute_Success(t *testing.T) {
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{
 		findByCharacterIDFunc: func(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
 			if characterID == "char-123" {
 				return mockAttributes, nil
@@ -152,8 +152,8 @@ func TestGetCharacterAttributesUseCase_Execute_Success(t *testing.T) {
 	}
 
 	// Verify first attribute
-	if output.Attributes[0].AttributeName != "Strength" {
-		t.Errorf("output.Attributes[0].AttributeName = %v, want %v", output.Attributes[0].AttributeName, "Strength")
+	if output.Attributes[0].AttributeName != "Força" {
+		t.Errorf("output.Attributes[0].AttributeName = %v, want %v", output.Attributes[0].AttributeName, "Força")
 	}
 
 	if output.Attributes[0].Value != 10 {
@@ -168,7 +168,7 @@ func TestGetCharacterAttributesUseCase_Execute_CharacterNotFound(t *testing.T) {
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{}
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{}
 
 	useCase := usecase.NewGetCharacterAttributesUseCase(mockCharRepo, mockAttrRepo)
 
@@ -207,7 +207,7 @@ func TestGetCharacterAttributesUseCase_Execute_EmptyAttributes(t *testing.T) {
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{
 		findByCharacterIDFunc: func(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
 			return []*entity.CharacterAttribute{}, nil // Empty list
 		},
@@ -255,7 +255,7 @@ func TestGetCharacterAttributesUseCase_Execute_RepositoryError(t *testing.T) {
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{
 		findByCharacterIDFunc: func(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error) {
 			return nil, errors.New("database connection failed")
 		},
@@ -286,7 +286,7 @@ func TestGetCharacterAttributesUseCase_Execute_ContextCancellation(t *testing.T)
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{}
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{}
 
 	useCase := usecase.NewGetCharacterAttributesUseCase(mockCharRepo, mockAttrRepo)
 
@@ -331,7 +331,7 @@ func TestGetCharacterAttributesUseCase_Execute_UnauthorizedAccess(t *testing.T) 
 		},
 	}
 
-	mockAttrRepo := &mockCharacterAttributeRepository{}
+	mockAttrRepo := &mockCharacterAttributeRepositoryGet{}
 
 	useCase := usecase.NewGetCharacterAttributesUseCase(mockCharRepo, mockAttrRepo)
 

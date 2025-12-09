@@ -16,7 +16,7 @@ type GetCharacterAttributesInput struct {
 
 // CharacterAttributeOutput represents a single character attribute in the output
 type CharacterAttributeOutput struct {
-	ID            string
+	ID            int
 	AttributeName string
 	Value         int
 	CharacterID   string

@@ -13,7 +13,7 @@ type CharacterAttributeRepository interface {
 	Create(ctx context.Context, attribute *entity.CharacterAttribute) error
 
 	// FindByID retrieves a character attribute by its ID
-	FindByID(ctx context.Context, id string) (*entity.CharacterAttribute, error)
+	FindByID(ctx context.Context, id int) (*entity.CharacterAttribute, error)
 
 	// FindByCharacterID retrieves all attributes for a character
 	FindByCharacterID(ctx context.Context, characterID string) ([]*entity.CharacterAttribute, error)
@@ -25,7 +25,7 @@ type CharacterAttributeRepository interface {
 	Update(ctx context.Context, attribute *entity.CharacterAttribute) error
 
 	// Delete removes a character attribute
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id int) error
 
 	// ExistsByCharacterIDAndName checks if an attribute with the given name already exists for a character
 	ExistsByCharacterIDAndName(ctx context.Context, characterID string, attributeName string) (bool, error)
